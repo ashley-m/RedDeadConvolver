@@ -1,0 +1,34 @@
+[project]
+name = "reddeadconvolver"
+version = "0.2.0"
+description = "Signal and audio convolution utility with stereo support"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+]
+web = [
+  "fastapi>=0.110",
+  "uvicorn>=0.29",
+  "python-multipart>=0.0.9",
+]
+
+[project.scripts]
+rdc-convolve = "reddeadconvolver.cli:main"
+rdc-dashboard = "reddeadconvolver.dashboard:main"
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"reddeadconvolver" = ["web/templates/*.html"]

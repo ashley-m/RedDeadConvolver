@@ -171,21 +171,21 @@
   </head>
   <body>
     <main class="container">
-      <h1>RedDeadConvolver Dashboard</h1>
+      <h1>Red Dead Convolver</h1>
       <p class="note">
-        Upload a signal and an impulse response WAV, tune convolution settings, preview waveforms,
+        Upload a signal and an impulse response (WAV, MP3, etc.), tune convolution settings, preview waveforms,
         and download the processed output.
       </p>
 
       <section class="layout">
         <form id="convolve-form" class="grid card">
           <div>
-            <label for="signal">Signal WAV</label>
-            <input id="signal" name="signal" type="file" accept="audio/wav" required />
+            <label for="signal">Signal Audio</label>
+            <input id="signal" name="signal" type="file" accept="audio/*" required />
           </div>
           <div>
-            <label for="ir">Impulse Response WAV</label>
-            <input id="ir" name="ir" type="file" accept="audio/wav" required />
+            <label for="ir">Impulse Response Audio</label>
+            <input id="ir" name="ir" type="file" accept="audio/*" required />
           </div>
 
           <div>
@@ -215,18 +215,26 @@
             <input id="wet" name="wet" type="number" step="0.01" min="0" value="1.0" />
           </div>
 
-          <div>
-            <label for="normalize">Normalize</label>
-            <select id="normalize" name="normalize">
-              <option value="peak">peak</option>
-              <option value="none">none</option>
-              <option value="rms">rms</option>
-            </select>
-          </div>
-          <div>
-            <label for="rms_target">RMS Target</label>
-            <input id="rms_target" name="rms_target" type="number" step="0.01" min="0.01" value="0.1" />
-          </div>
+        <div>
+          <label for="normalize">Normalize</label>
+          <select id="normalize" name="normalize">
+            <option value="peak">peak</option>
+            <option value="none">none</option>
+            <option value="rms">rms</option>
+          </select>
+        </div>
+        <div>
+          <label for="method">Convolution Method</label>
+          <select id="method" name="method">
+            <option value="fft">fft</option>
+            <option value="direct">direct</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="rms_target">RMS Target</label>
+          <input id="rms_target" name="rms_target" type="number" step="0.01" min="0.01" value="0.1" />
+        </div>
 
           <div class="full">
             <label for="sample_rate_policy">Sample-Rate Policy</label>

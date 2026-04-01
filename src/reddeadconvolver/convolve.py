@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
+import cmath
 import math
 import struct
 import wave
@@ -10,6 +11,7 @@ import wave
 ConvolutionMode = Literal["full", "same", "valid"]
 ChannelStrategy = Literal["match", "sum_ir", "left", "right"]
 Normalization = Literal["none", "peak", "rms"]
+ConvolutionMethod = Literal["fft", "direct"]
 
 Audio = list[list[float]]  # [samples][channels]
 
@@ -22,6 +24,7 @@ class ConvolutionConfig:
     wet: float = 1.0
     normalize: Normalization = "peak"
     rms_target: float = 0.1
+    method: ConvolutionMethod = "fft"
 
 
 def _to_2d(audio: list[float] | Audio) -> Audio:
@@ -69,17 +72,87 @@ def _prepare_ir(ir: list[float] | Audio, channels: int, strategy: ChannelStrateg
     raise ValueError(f"Unknown channel strategy: {strategy}")
 
 
-def _convolve_1d(signal: list[float], kernel: list[float], mode: ConvolutionMode) -> list[float]:
+def _next_power_of_two(value: int) -> int:
+    size = 1
+    while size < value:
+        size <<= 1
+    return size
+
+
+def _fft(values: list[complex], inverse: bool = False) -> list[complex]:
+    n = len(values)
+    if n == 0:
+        return []
+
+    a = values.copy()
+    j = 0
+    for i in range(1, n):
+        bit = n >> 1
+        while j & bit:
+            j ^= bit
+            bit >>= 1
+        j ^= bit
+        if i < j:
+            a[i], a[j] = a[j], a[i]
+
+    length = 2
+    sign = 1 if inverse else -1
+    while length <= n:
+        angle = sign * (2 * math.pi / length)
+        wlen = cmath.exp(1j * angle)
+        for start in range(0, n, length):
+            w = 1 + 0j
+            half = length // 2
+            for offset in range(half):
+                u = a[start + offset]
+                v = a[start + offset + half] * w
+                a[start + offset] = u + v
+                a[start + offset + half] = u - v
+                w *= wlen
+        length <<= 1
+
+    if inverse:
+        return [value / n for value in a]
+    return a
+
+
+def _convolve_1d_direct(signal: list[float], kernel: list[float]) -> list[float]:
+    n, m = len(signal), len(kernel)
+    full = [0.0] * (n + m - 1)
+    for i in range(n):
+        si = signal[i]
+        for j in range(m):
+            full[i + j] += si * kernel[j]
+    return full
+
+
+def _convolve_1d_fft(signal: list[float], kernel: list[float]) -> list[float]:
+    n, m = len(signal), len(kernel)
+    full_len = n + m - 1
+    fft_size = _next_power_of_two(full_len)
+
+    sig = [complex(sample, 0.0) for sample in signal] + ([0j] * (fft_size - n))
+    ker = [complex(sample, 0.0) for sample in kernel] + ([0j] * (fft_size - m))
+
+    sig_fft = _fft(sig)
+    ker_fft = _fft(ker)
+    product = [sig_fft[i] * ker_fft[i] for i in range(fft_size)]
+    time_domain = _fft(product, inverse=True)
+    return [time_domain[i].real for i in range(full_len)]
+
+
+def _convolve_1d(signal: list[float], kernel: list[float], mode: ConvolutionMode, method: ConvolutionMethod) -> list[float]:
     n, m = len(signal), len(kernel)
     if n == 0 or m == 0:
         return []
 
     full_len = n + m - 1
-    full = [0.0] * full_len
-    for i in range(n):
-        si = signal[i]
-        for j in range(m):
-            full[i + j] += si * kernel[j]
+    if method == "fft":
+        full = _convolve_1d_fft(signal, kernel)
+    elif method == "direct":
+        full = _convolve_1d_direct(signal, kernel)
+    else:
+        raise ValueError(f"Unknown convolution method: {method}")
 
     if mode == "full":
         return full
@@ -133,7 +206,7 @@ def convolve_signals(
     for ch in range(channels):
         sig_ch = _extract_channel(signal_2d, ch)
         ir_ch = _extract_channel(ir_2d, ch)
-        wet = _convolve_1d(sig_ch, ir_ch, cfg.mode)
+        wet = _convolve_1d(sig_ch, ir_ch, cfg.mode, cfg.method)
 
         if cfg.mode == "full":
             dry = sig_ch + ([0.0] * (len(wet) - len(sig_ch)))
@@ -158,7 +231,29 @@ def convolve_signals(
 
 
 def load_audio(path: str | Path) -> tuple[list[float] | Audio, int]:
-    with wave.open(str(path), "rb") as wav:
+    path_obj = Path(path)
+    try:
+        import soundfile as sf  # type: ignore[import-not-found]
+    except ImportError:
+        sf = None
+
+    if sf is not None:
+        try:
+            data, sample_rate = sf.read(str(path_obj), dtype="float32", always_2d=True)
+            frames = data.tolist() if hasattr(data, "tolist") else data
+            audio = [[float(sample) for sample in frame] for frame in frames]
+            channels = len(audio[0]) if audio else 1
+            if channels == 1:
+                return [frame[0] for frame in audio], int(sample_rate)
+            return audio, int(sample_rate)
+        except Exception:
+            if path_obj.suffix.lower() != ".wav":
+                raise ValueError(
+                    f"Unable to decode audio file: {path_obj}. "
+                    "Install a libsndfile build with support for this format."
+                )
+
+    with wave.open(str(path_obj), "rb") as wav:
         channels = wav.getnchannels()
         sample_rate = wav.getframerate()
         width = wav.getsampwidth()

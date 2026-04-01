@@ -7,6 +7,7 @@ from .convolve import (
     ChannelStrategy,
     ConvolutionConfig,
     ConvolutionMode,
+    ConvolutionMethod,
     Normalization,
     convolve_signals,
     load_audio,
@@ -27,6 +28,13 @@ app = FastAPI(title="RedDeadConvolver Dashboard", version="0.2.0")
 TEMPLATE_PATH = Path(__file__).parent / "web" / "templates" / "index.html"
 
 
+def _upload_suffix(filename: str | None) -> str:
+    if not filename:
+        return ".bin"
+    suffix = Path(filename).suffix
+    return suffix if suffix else ".bin"
+
+
 @app.get("/", response_class=HTMLResponse)
 def dashboard() -> str:
     return TEMPLATE_PATH.read_text(encoding="utf-8")
@@ -41,23 +49,25 @@ def convolve_api(
     dry: float = Form(0.0),
     wet: float = Form(1.0),
     normalize: str = Form("peak"),
+    method: str = Form("fft"),
     rms_target: float = Form(0.1),
     sample_rate_policy: str = Form("error"),
 ) -> FileResponse:
     if signal.filename is None or ir.filename is None:
         raise HTTPException(status_code=400, detail="Both signal and IR files are required.")
 
-    with NamedTemporaryFile(suffix="_signal.wav", delete=False) as signal_file:
+    with NamedTemporaryFile(suffix=f"_signal{_upload_suffix(signal.filename)}", delete=False) as signal_file:
         signal_file.write(signal.file.read())
         signal_path = Path(signal_file.name)
 
-    with NamedTemporaryFile(suffix="_ir.wav", delete=False) as ir_file:
+    with NamedTemporaryFile(suffix=f"_ir{_upload_suffix(ir.filename)}", delete=False) as ir_file:
         ir_file.write(ir.file.read())
         ir_path = Path(ir_file.name)
 
     valid_modes: set[ConvolutionMode] = {"full", "same", "valid"}
     valid_strategies: set[ChannelStrategy] = {"match", "sum_ir", "left", "right"}
     valid_norms: set[Normalization] = {"none", "peak", "rms"}
+    valid_methods: set[ConvolutionMethod] = {"fft", "direct"}
 
     if mode not in valid_modes:
         raise HTTPException(status_code=400, detail=f"Invalid mode: {mode}")
@@ -65,6 +75,8 @@ def convolve_api(
         raise HTTPException(status_code=400, detail=f"Invalid channel strategy: {channel_strategy}")
     if normalize not in valid_norms:
         raise HTTPException(status_code=400, detail=f"Invalid normalize option: {normalize}")
+    if method not in valid_methods:
+        raise HTTPException(status_code=400, detail=f"Invalid method: {method}")
 
     try:
         signal_audio, signal_sr = load_audio(signal_path)
@@ -87,6 +99,7 @@ def convolve_api(
             wet=wet,
             normalize=normalize,
             rms_target=rms_target,
+            method=method,
         )
         output = convolve_signals(signal_audio, ir_audio, cfg)
 

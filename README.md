@@ -1,6 +1,6 @@
 # RedDeadConvolver
 
-A lightweight Python utility for convolving one signal (or audio file) with another, with stereo-aware behavior and configurable processing.
+A lightweight Python utility for convolving one audio file with another, with stereo-aware behavior and configurable processing.
 
 ## Features
 

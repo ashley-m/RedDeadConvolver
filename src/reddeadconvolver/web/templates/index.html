@@ -5,136 +5,390 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>RedDeadConvolver Dashboard</title>
     <style>
-      :root { color-scheme: dark; }
+      :root {
+        color-scheme: dark;
+        --bg: #0b1220;
+        --panel: #111827;
+        --panel-elevated: #1f2937;
+        --border: #263248;
+        --text: #f9fafb;
+        --muted: #cbd5e1;
+        --primary: #60a5fa;
+        --primary-strong: #3b82f6;
+        --ok: #34d399;
+      }
+
+      * { box-sizing: border-box; }
+
       body {
         font-family: Inter, system-ui, sans-serif;
         margin: 0;
-        background: #111827;
-        color: #f3f4f6;
+        background: radial-gradient(circle at top, #172554 0%, var(--bg) 45%);
+        color: var(--text);
       }
+
       .container {
-        max-width: 920px;
+        max-width: 1100px;
         margin: 2rem auto;
         padding: 1.5rem;
-        background: #1f2937;
-        border-radius: 12px;
+        background: color-mix(in srgb, var(--panel), black 8%);
+        border-radius: 16px;
+        border: 1px solid var(--border);
+        box-shadow: 0 20px 40px rgb(0 0 0 / 0.35);
       }
-      h1 { margin-top: 0; }
+
+      h1 {
+        margin-top: 0;
+        margin-bottom: 0.5rem;
+        font-size: clamp(1.5rem, 2.6vw, 2rem);
+      }
+
+      .note {
+        color: var(--muted);
+        font-size: 0.96rem;
+        margin-bottom: 1.2rem;
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: minmax(360px, 2fr) minmax(280px, 1fr);
+        gap: 1rem;
+      }
+
+      .card {
+        background: var(--panel-elevated);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 1rem;
+      }
+
       .grid {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 1rem;
+        gap: 0.9rem;
       }
+
       .full { grid-column: 1 / -1; }
-      label { display: block; margin-bottom: 0.3rem; font-weight: 600; }
+
+      label {
+        display: block;
+        margin-bottom: 0.3rem;
+        font-weight: 600;
+      }
+
       input, select {
         width: 100%;
-        padding: 0.5rem;
+        padding: 0.55rem 0.6rem;
         border-radius: 8px;
-        border: 1px solid #374151;
-        background: #111827;
-        color: #f9fafb;
+        border: 1px solid #334155;
+        background: #0f172a;
+        color: var(--text);
       }
+
       button {
-        margin-top: 1rem;
+        margin-top: 0.3rem;
         width: 100%;
-        background: #2563eb;
+        background: linear-gradient(135deg, var(--primary-strong), #2563eb);
         color: #fff;
         border: none;
-        padding: 0.75rem;
-        border-radius: 8px;
+        padding: 0.8rem;
+        border-radius: 10px;
         cursor: pointer;
         font-weight: 700;
       }
-      button:disabled { background: #4b5563; cursor: not-allowed; }
-      .status {
-        margin-top: 1rem;
-        min-height: 1.5rem;
-        color: #93c5fd;
+
+      button:disabled {
+        background: #475569;
+        cursor: not-allowed;
       }
-      .note { color: #d1d5db; font-size: 0.95rem; }
+
+      .status {
+        margin-top: 0.8rem;
+        min-height: 1.4rem;
+        color: var(--primary);
+      }
+
+      .status.done { color: var(--ok); }
+      .status.error { color: #fca5a5; }
+
+      .wave-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: 0.8rem;
+      }
+
+      .wave-header h2 {
+        margin: 0;
+        font-size: 1.1rem;
+      }
+
+      .wave-sub {
+        margin-top: 0.2rem;
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+
+      .wave-grid {
+        margin-top: 0.8rem;
+        display: grid;
+        gap: 0.8rem;
+      }
+
+      .wave-block h3 {
+        margin: 0 0 0.3rem 0;
+        font-size: 0.95rem;
+        color: #dbeafe;
+      }
+
+      .wave-canvas {
+        width: 100%;
+        height: 96px;
+        border-radius: 8px;
+        border: 1px solid #334155;
+        background: linear-gradient(180deg, #0f172a 0%, #111827 100%);
+        display: block;
+      }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        border: 1px solid #334155;
+        border-radius: 999px;
+        padding: 0.18rem 0.6rem;
+        font-size: 0.78rem;
+        color: var(--muted);
+      }
+
+      @media (max-width: 920px) {
+        .layout { grid-template-columns: 1fr; }
+      }
+
+      @media (max-width: 640px) {
+        .grid { grid-template-columns: 1fr; }
+      }
     </style>
   </head>
   <body>
     <main class="container">
-      <h1>RedDeadConvolver Dashboard (MVP)</h1>
-      <p class="note">Upload a signal and an impulse response WAV file, configure parameters, then download the processed output.</p>
+      <h1>RedDeadConvolver Dashboard</h1>
+      <p class="note">
+        Upload a signal and an impulse response WAV, tune convolution settings, preview waveforms,
+        and download the processed output.
+      </p>
 
-      <form id="convolve-form" class="grid">
-        <div>
-          <label for="signal">Signal WAV</label>
-          <input id="signal" name="signal" type="file" accept="audio/wav" required />
-        </div>
-        <div>
-          <label for="ir">Impulse Response WAV</label>
-          <input id="ir" name="ir" type="file" accept="audio/wav" required />
-        </div>
+      <section class="layout">
+        <form id="convolve-form" class="grid card">
+          <div>
+            <label for="signal">Signal WAV</label>
+            <input id="signal" name="signal" type="file" accept="audio/wav" required />
+          </div>
+          <div>
+            <label for="ir">Impulse Response WAV</label>
+            <input id="ir" name="ir" type="file" accept="audio/wav" required />
+          </div>
 
-        <div>
-          <label for="mode">Convolution Mode</label>
-          <select id="mode" name="mode">
-            <option value="full">full</option>
-            <option value="same">same</option>
-            <option value="valid">valid</option>
-          </select>
-        </div>
-        <div>
-          <label for="channel_strategy">Channel Strategy</label>
-          <select id="channel_strategy" name="channel_strategy">
-            <option value="match">match</option>
-            <option value="sum_ir">sum_ir</option>
-            <option value="left">left</option>
-            <option value="right">right</option>
-          </select>
-        </div>
+          <div>
+            <label for="mode">Convolution Mode</label>
+            <select id="mode" name="mode">
+              <option value="full">full</option>
+              <option value="same">same</option>
+              <option value="valid">valid</option>
+            </select>
+          </div>
+          <div>
+            <label for="channel_strategy">Channel Strategy</label>
+            <select id="channel_strategy" name="channel_strategy">
+              <option value="match">match</option>
+              <option value="sum_ir">sum_ir</option>
+              <option value="left">left</option>
+              <option value="right">right</option>
+            </select>
+          </div>
 
-        <div>
-          <label for="dry">Dry</label>
-          <input id="dry" name="dry" type="number" step="0.01" min="0" value="0.0" />
-        </div>
-        <div>
-          <label for="wet">Wet</label>
-          <input id="wet" name="wet" type="number" step="0.01" min="0" value="1.0" />
-        </div>
+          <div>
+            <label for="dry">Dry</label>
+            <input id="dry" name="dry" type="number" step="0.01" min="0" value="0.0" />
+          </div>
+          <div>
+            <label for="wet">Wet</label>
+            <input id="wet" name="wet" type="number" step="0.01" min="0" value="1.0" />
+          </div>
 
-        <div>
-          <label for="normalize">Normalize</label>
-          <select id="normalize" name="normalize">
-            <option value="peak">peak</option>
-            <option value="none">none</option>
-            <option value="rms">rms</option>
-          </select>
-        </div>
-        <div>
-          <label for="rms_target">RMS Target</label>
-          <input id="rms_target" name="rms_target" type="number" step="0.01" min="0.01" value="0.1" />
-        </div>
+          <div>
+            <label for="normalize">Normalize</label>
+            <select id="normalize" name="normalize">
+              <option value="peak">peak</option>
+              <option value="none">none</option>
+              <option value="rms">rms</option>
+            </select>
+          </div>
+          <div>
+            <label for="rms_target">RMS Target</label>
+            <input id="rms_target" name="rms_target" type="number" step="0.01" min="0.01" value="0.1" />
+          </div>
 
-        <div class="full">
-          <label for="sample_rate_policy">Sample-Rate Policy</label>
-          <select id="sample_rate_policy" name="sample_rate_policy">
-            <option value="error">error</option>
-            <option value="signal">signal</option>
-            <option value="ir">ir</option>
-          </select>
-        </div>
+          <div class="full">
+            <label for="sample_rate_policy">Sample-Rate Policy</label>
+            <select id="sample_rate_policy" name="sample_rate_policy">
+              <option value="error">error</option>
+              <option value="signal">signal</option>
+              <option value="ir">ir</option>
+            </select>
+          </div>
 
-        <div class="full">
-          <button type="submit" id="submit-btn">Process & Download</button>
-          <p class="status" id="status"></p>
-        </div>
-      </form>
+          <div class="full">
+            <button type="submit" id="submit-btn">Process & Download</button>
+            <p class="status" id="status"></p>
+          </div>
+        </form>
+
+        <section class="card">
+          <div class="wave-header">
+            <h2>Waveform Preview</h2>
+            <span class="pill" id="processing-pill">Idle</span>
+          </div>
+          <p class="wave-sub">Waveforms are rendered from local audio files. Output preview appears when processing completes.</p>
+
+          <div class="wave-grid">
+            <div class="wave-block">
+              <h3>Signal</h3>
+              <canvas id="signal-wave" class="wave-canvas" width="600" height="96"></canvas>
+            </div>
+            <div class="wave-block">
+              <h3>Impulse Response</h3>
+              <canvas id="ir-wave" class="wave-canvas" width="600" height="96"></canvas>
+            </div>
+            <div class="wave-block">
+              <h3>Output</h3>
+              <canvas id="output-wave" class="wave-canvas" width="600" height="96"></canvas>
+            </div>
+          </div>
+        </section>
+      </section>
     </main>
 
     <script>
       const form = document.getElementById("convolve-form");
       const submitBtn = document.getElementById("submit-btn");
       const status = document.getElementById("status");
+      const signalInput = document.getElementById("signal");
+      const irInput = document.getElementById("ir");
+      const processingPill = document.getElementById("processing-pill");
+
+      const signalCanvas = document.getElementById("signal-wave");
+      const irCanvas = document.getElementById("ir-wave");
+      const outputCanvas = document.getElementById("output-wave");
+
+      function clearCanvas(canvas, label = "No data") {
+        const ctx = canvas.getContext("2d");
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "#0f172a";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.strokeStyle = "#1e293b";
+        ctx.beginPath();
+        ctx.moveTo(0, canvas.height / 2);
+        ctx.lineTo(canvas.width, canvas.height / 2);
+        ctx.stroke();
+        ctx.fillStyle = "#64748b";
+        ctx.font = "12px Inter, system-ui, sans-serif";
+        ctx.fillText(label, 10, 18);
+      }
+
+      function drawWaveform(canvas, channelData, color = "#60a5fa") {
+        const ctx = canvas.getContext("2d");
+        clearCanvas(canvas);
+
+        const width = canvas.width;
+        const height = canvas.height;
+        const step = Math.ceil(channelData.length / width);
+        const amp = height / 2;
+
+        ctx.lineWidth = 1.25;
+        ctx.strokeStyle = color;
+        ctx.beginPath();
+
+        for (let x = 0; x < width; x += 1) {
+          const start = x * step;
+          let min = 1;
+          let max = -1;
+          for (let i = 0; i < step; i += 1) {
+            const sample = channelData[start + i];
+            if (sample === undefined) break;
+            if (sample < min) min = sample;
+            if (sample > max) max = sample;
+          }
+          ctx.moveTo(x, (1 + min) * amp);
+          ctx.lineTo(x, (1 + max) * amp);
+        }
+
+        ctx.stroke();
+      }
+
+      async function decodeAndDraw(fileOrBlob, canvas, color, emptyLabel) {
+        if (!fileOrBlob) {
+          clearCanvas(canvas, emptyLabel);
+          return;
+        }
+
+        try {
+          const arrayBuffer = await fileOrBlob.arrayBuffer();
+          const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+          const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+          const channel = audioBuffer.getChannelData(0);
+          drawWaveform(canvas, channel, color);
+          await audioContext.close();
+        } catch {
+          clearCanvas(canvas, "Unable to decode WAV");
+        }
+      }
+
+      function animateProcessing(canvasList) {
+        let tick = 0;
+        const id = window.setInterval(() => {
+          tick += 1;
+          for (const canvas of canvasList) {
+            const ctx = canvas.getContext("2d");
+            ctx.fillStyle = "rgba(15, 23, 42, 0.15)";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const waveHeight = 26 + Math.sin(tick / 4) * 8;
+            const y = canvas.height / 2;
+            ctx.strokeStyle = "rgba(147, 197, 253, 0.8)";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            for (let x = 0; x < canvas.width; x += 12) {
+              const dy = Math.sin((x + tick * 8) / 24) * waveHeight * 0.25;
+              ctx.lineTo(x, y + dy);
+            }
+            ctx.stroke();
+          }
+        }, 60);
+
+        return () => window.clearInterval(id);
+      }
+
+      clearCanvas(signalCanvas, "Select signal WAV");
+      clearCanvas(irCanvas, "Select IR WAV");
+      clearCanvas(outputCanvas, "Output preview");
+
+      signalInput.addEventListener("change", async () => {
+        await decodeAndDraw(signalInput.files?.[0], signalCanvas, "#60a5fa", "Select signal WAV");
+      });
+
+      irInput.addEventListener("change", async () => {
+        await decodeAndDraw(irInput.files?.[0], irCanvas, "#c4b5fd", "Select IR WAV");
+      });
 
       form.addEventListener("submit", async (event) => {
         event.preventDefault();
         submitBtn.disabled = true;
         status.textContent = "Processing...";
+        status.className = "status";
+        processingPill.textContent = "Processing";
+
+        const stopAnimation = animateProcessing([signalCanvas, irCanvas, outputCanvas]);
 
         try {
           const body = new FormData(form);
@@ -149,16 +403,24 @@
           }
 
           const blob = await response.blob();
+          await decodeAndDraw(blob, outputCanvas, "#34d399", "Output preview");
+
           const url = URL.createObjectURL(blob);
           const a = document.createElement("a");
           a.href = url;
           a.download = "convolved_output.wav";
           a.click();
           URL.revokeObjectURL(url);
+
           status.textContent = "Done. Download started.";
+          status.className = "status done";
+          processingPill.textContent = "Done";
         } catch (error) {
           status.textContent = "Error: " + error.message;
+          status.className = "status error";
+          processingPill.textContent = "Error";
         } finally {
+          stopAnimation();
           submitBtn.disabled = false;
         }
       });

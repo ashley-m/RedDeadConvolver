@@ -21,6 +21,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--dry", type=float, default=0.0, help="Dry mix amount")
     parser.add_argument("--wet", type=float, default=1.0, help="Wet mix amount")
     parser.add_argument("--normalize", choices=["none", "peak", "rms"], default="peak")
+    parser.add_argument(
+        "--method",
+        choices=["fft", "direct"],
+        default="fft",
+        help="Convolution implementation (fft is faster for long audio)",
+    )
     parser.add_argument("--rms-target", type=float, default=0.1)
     parser.add_argument(
         "--sample-rate-policy",
@@ -53,6 +59,7 @@ def main() -> None:
         wet=args.wet,
         normalize=args.normalize,
         rms_target=args.rms_target,
+        method=args.method,
     )
     output = convolve_signals(signal, ir, cfg)
 

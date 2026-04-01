@@ -6,16 +6,17 @@ A lightweight Python utility for convolving one signal (or audio file) with anot
 
 - Mono or stereo input support.
 - Configurable convolution mode: `full`, `same`, `valid`.
+- Configurable convolution method: `fft` (default) or `direct`.
 - Channel mismatch handling strategies:
   - `match` (best-effort channel matching)
   - `sum_ir` (collapse IR to mono and apply to all output channels)
   - `left` / `right` (pick one IR channel for all outputs)
 - Dry/wet mix controls.
 - Output normalization modes: `none`, `peak`, `rms`.
-- No third-party runtime dependencies for the core DSP engine.
+- Broad audio input support via `soundfile` (including WAV and MP3 on compatible builds).
 - Dashboard MVP via FastAPI + browser UI.
 
-> Current audio I/O support is **16-bit PCM WAV** for portability.
+> Input audio supports WAV, MP3, and other formats supported by your `libsndfile` build. Output is written as 16-bit PCM WAV.
 
 ## Installation
 
@@ -38,14 +39,15 @@ Then open `http://localhost:8000`.
 
 ```bash
 rdc-convolve \
-  --signal ./audio/dry.wav \
+  --signal ./audio/dry.mp3 \
   --ir ./audio/room_ir.wav \
   --output ./audio/out.wav \
   --mode full \
   --channel-strategy match \
   --dry 0.1 \
   --wet 0.9 \
-  --normalize peak
+  --normalize peak \
+  --method fft
 ```
 
 ### Sample-rate mismatch policy
@@ -63,10 +65,11 @@ The first GUI slice is implemented and currently uses:
 
 Available controls:
 
-- Upload signal WAV + IR WAV
+- Upload signal audio + IR audio (e.g., WAV/MP3)
 - Convolution mode, channel strategy
 - Dry/wet values
 - Normalization + RMS target
+- Convolution method (fft/direct)
 - Sample-rate mismatch policy
 
 When submitted, the app returns `convolved_output.wav` for download.
@@ -79,7 +82,7 @@ from reddeadconvolver.convolve import ConvolutionConfig, convolve_signals
 signal = [[0.2, 0.1], [0.0, 0.3], [0.1, 0.0]]  # stereo signal
 ir = [1.0, 0.5, 0.25]  # mono IR
 
-cfg = ConvolutionConfig(mode="full", channel_strategy="match", dry=0.0, wet=1.0, normalize="peak")
+cfg = ConvolutionConfig(mode="full", channel_strategy="match", dry=0.0, wet=1.0, normalize="peak", method="fft")
 out = convolve_signals(signal, ir, cfg)
 ```
 
